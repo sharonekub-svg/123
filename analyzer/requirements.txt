@@ -1,0 +1,12 @@
+# Stage 0 (simulation + engine) uses only the Python standard library.
+#
+# Stage 1+ (real CV pipeline on the GPU worker) will add, roughly:
+#   ultralytics      # YOLO11 detection + pose (pitch keypoints)
+#   supervision      # ByteTrack tracking utilities
+#   opencv-python    # video IO, homography
+#   numpy
+#   torch            # backbone for detection / SigLIP embeddings
+#   scikit-learn     # KMeans team clustering
+#   umap-learn       # dimensionality reduction for team clustering
+#
+# Kept commented so Stage 0 stays dependency-free and instantly runnable.
