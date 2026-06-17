@@ -9,7 +9,13 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/sample-match.json")
+    // ?data=clip loads the real CV-pipeline output; default is the Stage-0 sim.
+    const which =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("data") === "clip"
+        ? "/clip-match.json"
+        : "/sample-match.json";
+    fetch(which)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

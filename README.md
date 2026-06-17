@@ -45,6 +45,35 @@ npm run dev          # http://localhost:3000
 
 `npm run gen:sample` (inside `web/`) regenerates the data via the analyzer.
 
+## Stage 1 — real CV on a clip (`analyzer/pipeline.py`)
+
+Runs the actual hard tech on a real football video and emits the **same**
+canonical JSON, so the engine and viewer work unchanged:
+
+```bash
+pip install -r analyzer/requirements.txt
+python3 analyzer/pipeline.py --source clip.mp4 \
+    --out web/public/clip-match.json --annotated clips/clip-annotated.mp4 \
+    --stride 3 --max-seconds 8 --conf 0.10 --imgsz 1280
+# then view the real data:  http://localhost:3000/?data=clip
+```
+
+Pipeline: **YOLO11** (COCO person + sports-ball) → **ByteTrack** stable ids →
+**KMeans** on jersey colour for teams → image→pitch projection → engine.
+
+What this stage proves vs. what it does *not* (honest):
+
+- ✅ Real player detection + multi-object tracking + per-track ids + team split,
+  rendered as an annotated video.
+- ⚠️ **Per-player event counts (passes/assists/goals/losses) are NOT trustworthy
+  here.** They need (a) a football-tuned ball detector, (b) a real homography to
+  measure metric proximity, and (c) stable Re-ID so a track == a player. On a
+  moving broadcast camera with the generic COCO model, tracks fragment (a single
+  player becomes many short track ids) and the ball is sparse — so possession,
+  and everything derived from it, is unreliable. This is exactly why the design
+  puts homography in Stage 2 and HITL Re-ID in Stage 3. The stat engine itself is
+  proven correct on calibrated data (the Stage-0 simulation).
+
 ## Architecture (recap)
 
 - **Vercel / Next.js** — frontend + light API (auth, match management, serving results).

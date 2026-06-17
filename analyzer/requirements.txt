@@ -1,12 +1,13 @@
-# Stage 0 (simulation + engine) uses only the Python standard library.
+# Stage 0 (simulate.py + engine.py) uses only the Python standard library.
 #
-# Stage 1+ (real CV pipeline on the GPU worker) will add, roughly:
-#   ultralytics      # YOLO11 detection + pose (pitch keypoints)
-#   supervision      # ByteTrack tracking utilities
-#   opencv-python    # video IO, homography
-#   numpy
-#   torch            # backbone for detection / SigLIP embeddings
-#   scikit-learn     # KMeans team clustering
-#   umap-learn       # dimensionality reduction for team clustering
+# Stage 1 (pipeline.py — real CV on a clip) needs:
+ultralytics        # YOLO11 detection (auto-downloads yolo11n.pt from GitHub)
+supervision        # ByteTrack tracking + annotators
+opencv-python      # video IO, frame handling
+numpy              # arrays + the tiny KMeans team clustering
+# torch / torchvision are pulled in automatically by ultralytics.
 #
-# Kept commented so Stage 0 stays dependency-free and instantly runnable.
+# Stage 2+ (true homography + football-tuned ball model) will add, roughly:
+#   a Roboflow pitch-keypoint model (YOLO11-pose) for the 3x3 homography
+#   a football-tuned detector (player/GK/referee/ball) for reliable ball tracking
+#   scikit-learn / umap-learn + SigLIP embeddings for robust team clustering

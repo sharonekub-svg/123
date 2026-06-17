@@ -16,6 +16,11 @@ venv/
 .idea/
 .vscode/
 
+# CV pipeline I/O (large binaries / model weights)
+clips/
+*.pt
+web/public/clip-annotated.mp4
+
 # Env
 .env
 .env.local

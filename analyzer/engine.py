@@ -47,12 +47,12 @@ class Spell:
     end_t: float
 
 
-def _nearest_player(frame, players_by_id) -> Optional[str]:
-    """Return the id of the player closest to the ball, within POSSESSION_RADIUS_M."""
+def _nearest_player(frame, players_by_id, radius: float) -> Optional[str]:
+    """Return the id of the player closest to the ball, within `radius`."""
     if frame.ball is None:
         return None
     bx, by = frame.ball
-    best, best_d = None, POSSESSION_RADIUS_M
+    best, best_d = None, radius
     for pos in frame.positions:
         d = _dist(pos.x, pos.y, bx, by)
         if d <= best_d:
@@ -60,11 +60,11 @@ def _nearest_player(frame, players_by_id) -> Optional[str]:
     return best
 
 
-def _build_spells(md: MatchData) -> list[Spell]:
+def _build_spells(md: MatchData, radius: float = POSSESSION_RADIUS_M) -> list[Spell]:
     """Collapse the per-frame possession signal into clean possession spells."""
     players_by_id = {p.id: p for p in md.players}
     raw: list[tuple[float, Optional[str]]] = [
-        (f.t, _nearest_player(f, players_by_id)) for f in md.frames
+        (f.t, _nearest_player(f, players_by_id, radius)) for f in md.frames
     ]
 
     spells: list[Spell] = []
@@ -113,10 +113,10 @@ def _ball_in_goal(md: MatchData, frame) -> Optional[str]:
     return None
 
 
-def detect_events(md: MatchData) -> list[Event]:
+def detect_events(md: MatchData, radius: float = POSSESSION_RADIUS_M) -> list[Event]:
     """Derive pass / loss / tackle / goal / assist / key_pass events."""
     players_by_id = {p.id: p for p in md.players}
-    spells = _build_spells(md)
+    spells = _build_spells(md, radius)
     events: list[Event] = []
 
     # possession transitions -> pass / loss / tackle
@@ -177,7 +177,8 @@ def _last_pass_to(events: list[Event], receiver: str, t: float) -> Optional[Even
     return best
 
 
-def compute_stats(md: MatchData, events: list[Event]) -> dict[str, PlayerStats]:
+def compute_stats(md: MatchData, events: list[Event],
+                  radius: float = POSSESSION_RADIUS_M) -> dict[str, PlayerStats]:
     stats = {p.id: PlayerStats(player=p.id) for p in md.players}
 
     # event-based tallies
@@ -202,7 +203,7 @@ def compute_stats(md: MatchData, events: list[Event]) -> dict[str, PlayerStats]:
             s.key_passes += 1
 
     _add_physical_stats(md, stats)
-    _add_possession(md, stats)
+    _add_possession(md, stats, radius)
     return stats
 
 
@@ -236,8 +237,9 @@ def _add_physical_stats(md: MatchData, stats: dict[str, PlayerStats]) -> None:
             last_pos[pos.player] = (frame.t, pos.x, pos.y)
 
 
-def _add_possession(md: MatchData, stats: dict[str, PlayerStats]) -> None:
-    spells = _build_spells(md)
+def _add_possession(md: MatchData, stats: dict[str, PlayerStats],
+                    radius: float = POSSESSION_RADIUS_M) -> None:
+    spells = _build_spells(md, radius)
     total = 0.0
     for sp in spells:
         dur = sp.end_t - sp.start_t
@@ -250,8 +252,14 @@ def _add_possession(md: MatchData, stats: dict[str, PlayerStats]) -> None:
             s.possession_pct = 100.0 * s.possession_s / total
 
 
-def analyze(md: MatchData) -> MatchData:
-    """Full Stage-0 analysis: fill md.events and md.stats in place, return md."""
-    md.events = detect_events(md)
-    md.stats = compute_stats(md, md.events)
+def analyze(md: MatchData, possession_radius: float = POSSESSION_RADIUS_M) -> MatchData:
+    """Full analysis: fill md.events and md.stats in place, return md.
+
+    `possession_radius` is in the same units as the frame coordinates. For
+    metric (homography-calibrated or simulated) data the default ~2.5 m is
+    right; for the Stage-1 image-projected pipeline a looser value compensates
+    for the uncalibrated projection.
+    """
+    md.events = detect_events(md, possession_radius)
+    md.stats = compute_stats(md, md.events, possession_radius)
     return md
