@@ -74,6 +74,49 @@ What this stage proves vs. what it does *not* (honest):
   puts homography in Stage 2 and HITL Re-ID in Stage 3. The stat engine itself is
   proven correct on calibrated data (the Stage-0 simulation).
 
+## Stage 2 — metric accuracy via homography (`analyzer/homography.py`)
+
+This is what turns pixel tracks into trustworthy **meters**, and therefore into
+trustworthy statistics. Given >= 4 correspondences between image pixels and known
+pitch locations, we solve a 3x3 homography `H` so `pitch_m = H · pixel`.
+
+```bash
+# static (or near-static) camera: calibrate once, get real meters
+python3 analyzer/pipeline.py --source clip.mp4 \
+    --homography analyzer/calibration.example.json --slice --max-seconds 8
+```
+
+- **Static wide camera (the MVP target):** one homography is exact for the whole
+  clip → metric distances/speeds and a correct 2.5 m possession radius → real
+  per-player passes/tackles/possession.
+- **Moving / broadcast camera:** a single `H` is wrong as the camera pans, so we
+  propagate the frame-0 homography with **global motion compensation** (ORB
+  feature matching → per-frame affine, chained). Approximate, but recovers metric
+  positions without a pitch-keypoint model.
+
+**Proven correct, not hand-waved.** `analyzer/tests/test_metric_pipeline.py`
+renders a ground-truth match through a known camera into pixels, runs the exact
+calibrate→project path, and asserts the recovered positions (≤1e-6 m) and every
+per-player stat match the ground truth. `test_homography.py`/`test_engine.py`
+cover the math and event logic.
+
+```bash
+python3 analyzer/homography.py             # homography self-test
+python3 analyzer/tests/test_engine.py      # event + stats logic
+python3 analyzer/tests/test_metric_pipeline.py   # full metric chain
+```
+
+### Honest accuracy ceiling here
+
+On the bundled **broadcast** clip, with the generic COCO model, no GPU, and no
+pitch-keypoint model (Roboflow's is behind a blocked host + API key), two limits
+remain: Re-ID still fragments under camera motion, and propagated homography
+drifts. So per-player event counts on *that* clip stay approximate. The pieces
+that make them exact — a football-tuned detector, a keypoint homography model, a
+GPU, and HITL Re-ID (Stage 3) — are the documented next steps. The machinery is
+all here and tested; it needs calibrated input (a static camera or those models)
+to deliver exact numbers.
+
 ## Architecture (recap)
 
 - **Vercel / Next.js** — frontend + light API (auth, match management, serving results).

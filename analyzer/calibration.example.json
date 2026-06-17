@@ -1,0 +1,6 @@
+{
+  "_comment": "Maps image pixels (on ref_frame) to pitch meters. Provide >= 4 correspondences; more (penalty-box corners, center spot, circle tangents) = better. For a STATIC camera this single homography is exact for the whole clip. Pitch is 105 x 68 m, origin at a corner; goals centered at x=0 and x=105.",
+  "ref_frame": 0,
+  "image_points": [[280, 880], [1640, 870], [1905, 1050], [40, 1065]],
+  "pitch_points": [[0, 0], [105, 0], [105, 68], [0, 68]]
+}

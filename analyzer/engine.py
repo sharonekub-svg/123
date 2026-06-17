@@ -210,7 +210,7 @@ def compute_stats(md: MatchData, events: list[Event],
 def _add_physical_stats(md: MatchData, stats: dict[str, PlayerStats]) -> None:
     """Distance covered + top speed from consecutive frame positions."""
     last_pos: dict[str, tuple[float, float, float]] = {}  # pid -> (t, x, y)
-    speed_window: dict[str, list[tuple[float, float]]] = {}  # pid -> [(t, step_m)]
+    speed_window: dict[str, list[tuple[float, float, float]]] = {}  # pid -> [(t, step_m, dt)]
 
     for frame in md.frames:
         for pos in frame.positions:
@@ -225,13 +225,15 @@ def _add_physical_stats(md: MatchData, stats: dict[str, PlayerStats]) -> None:
                     step = _dist(px, py, pos.x, pos.y)
                     s.distance_m += step
                     win = speed_window.setdefault(pos.player, [])
-                    win.append((frame.t, step))
+                    win.append((frame.t, step, dt))
                     # trim window
                     while win and win[0][0] < frame.t - SPEED_SMOOTH_S:
                         win.pop(0)
-                    span = win[-1][0] - win[0][0]
-                    if span > 0:
-                        v_kmh = (sum(d for _, d in win) / span) * 3.6
+                    # speed = total distance / total elapsed time over the window
+                    dist_sum = sum(d for _, d, _ in win)
+                    time_sum = sum(ddt for _, _, ddt in win)
+                    if time_sum > 0:
+                        v_kmh = (dist_sum / time_sum) * 3.6
                         if v_kmh <= MAX_PLAUSIBLE_SPEED_KMH:
                             s.top_speed_kmh = max(s.top_speed_kmh, v_kmh)
             last_pos[pos.player] = (frame.t, pos.x, pos.y)
