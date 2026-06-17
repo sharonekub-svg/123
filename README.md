@@ -117,6 +117,27 @@ GPU, and HITL Re-ID (Stage 3) — are the documented next steps. The machinery i
 all here and tested; it needs calibrated input (a static camera or those models)
 to deliver exact numbers.
 
+## Stage 3 — human-in-the-loop corrections (`analyzer/hitl.py` + `/review`)
+
+The fix for fragmented Re-ID. The pipeline emits *tracks*; a human maps each
+track to a real roster player (many fragments of one player → one entry),
+confirms/edits the critical events, and stats are recomputed per real player.
+
+- **Web `/review`**: assign tracks → players, edit/confirm/delete events, live
+  per-player preview. Saves to `localStorage`; Download produces `corrections.json`.
+- **`analyzer/hitl.py`**: the authoritative recompute. `apply_corrections` merges
+  trajectories, curates events, and — importantly — drops the *phantom self-pass*
+  an id switch creates when a player appears to pass to themselves.
+
+```bash
+python3 analyzer/hitl.py --in web/public/clip-match.json \
+    --corrections corrections.json --out web/public/clip-confirmed.json
+```
+
+Proven by `analyzer/tests/test_hitl.py`: fragmenting a player into two tracks and
+mapping both back recovers the correct per-player passes, and a mid-possession id
+switch no longer produces a phantom pass.
+
 ## Architecture (recap)
 
 - **Vercel / Next.js** — frontend + light API (auth, match management, serving results).

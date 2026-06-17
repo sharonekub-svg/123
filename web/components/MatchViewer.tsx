@@ -55,7 +55,15 @@ export default function MatchViewer({ data }: { data: MatchData }) {
             <b>{data.match.away_team}</b> · {data.match.date}
           </div>
         </div>
-        <span className="badge">Stage 0 · simulation mode</span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <a
+            className="badge"
+            href={`/review${typeof window !== "undefined" ? window.location.search : ""}`}
+          >
+            HITL review →
+          </a>
+          <span className="badge">Stage 0 · simulation mode</span>
+        </div>
       </div>
 
       <div className="panel">
